@@ -1,0 +1,235 @@
+import pandas as pd
+
+
+configfile: "config.yaml"
+
+
+COHORT = config["cohort"]
+SAMPLESHEET = pd.read_csv(
+    "samplesheets/" + COHORT + "/samplesheet.tsv",
+    sep="\t",
+    comment="#",
+    dtype={"tests": "string"},
+)
+SAMPLESHEET = SAMPLESHEET.set_index("person", drop=False)
+
+
+def full_citupm_scan(samplesheet):
+    return (
+        samplesheet.dropna(subset=["tests"])
+        .set_index("person")["tests"]
+        .str.split(",")
+        .explode()
+        .astype(int)
+        .reset_index(name="test")
+    )
+
+
+FULL_citupm_scan = full_citupm_scan(SAMPLESHEET)
+
+
+rule stage23_minimal_trees_all:
+    input:
+        expand(
+            "results/min_trees/{cohort}/{person}/trees",
+            cohort=COHORT,
+            person=SAMPLESHEET.person,
+        ),
+
+
+rule stage0_fixed_trees_all:
+    input:
+        expand(
+            "results/fixed_trees/{cohort}/{person}/trees",
+            cohort=COHORT,
+            person=SAMPLESHEET.person,
+        ),
+
+
+rule stage1_optimal_trees_all:
+    input:
+        expand(
+            "results/optimal_trees/{cohort}/{person}/trees",
+            cohort=COHORT,
+            person=SAMPLESHEET.person,
+        ),
+
+
+rule migration_scan_all:
+    input:
+        expand(
+            "results/migration_scan/{cohort}/mig_{migrations:03d}/{person}",
+            zip,
+            cohort=[COHORT] * FULL_citupm_scan.shape[0],
+            person=FULL_citupm_scan.person,
+            migrations=FULL_citupm_scan.test,
+        ),
+
+
+##
+# Subordinate targets
+##
+def metastatic_sites_option(person):
+    if not pd.isna(SAMPLESHEET.loc[person, "metastases"]):
+        sites = SAMPLESHEET.loc[person, "metastases"]
+        return f"--metastatic-sites {sites}"
+    else:
+        return ""
+
+
+rule optimize_fixed_tree_stage0:
+    output:
+        directory("results/fixed_trees/{cohort}/{person}/trees"),
+    input:
+        mutations="data/{cohort}/{person}/mutations.tsv",
+        B="data/{cohort}/{person}/fixed_B.tsv",
+        delta="data/{cohort}/{person}/fixed_delta.tsv",
+    params:
+        args=lambda w: config["citupm_no_migrations"][w.cohort]["args"],
+        citup_py=lambda w: config["citupm_no_migrations"][w.cohort]["citup_py"],
+        numSolutions=lambda w: config["citupm_no_migrations"][w.cohort]["num_solutions"],
+        dagSolutions=lambda w: config["citupm_no_migrations"][w.cohort]["dag_solutions"],
+    resources:
+        runtime=4 * 60,
+        mem_mb=8 * 1024,
+    log:
+        "results/fixed_trees/{cohort}/{person}/logs/citup.log",
+    threads: 8
+    group:
+        "citupm_fixed"
+    shell:
+        """
+        echo "Job ID: ${{SLURM_JOB_ID:-NA}}" > {log}
+        mkdir -p {output}
+        outprefix="{output}/{wildcards.person}"
+        python {params.citup_py} \\
+            -f {input.mutations} \\
+            --fixed-B-file {input.B} \\
+            --fixed-delta-file {input.delta} \\
+            -o $outprefix \\
+            --numSolutions {params.numSolutions} \\
+            --max-refined-solutions {params.dagSolutions} \\
+            {params.args} \\
+            --gurobi-threads {threads} >> {log} 2>&1
+        """
+
+
+rule optimize_without_migrations_stage1:
+    output:
+        directory("results/optimal_trees/{cohort}/{person}/trees"),
+    input:
+        mutations="data/{cohort}/{person}/mutations.tsv",
+    params:
+        args=lambda w: config["citupm_no_migrations"][w.cohort]["args"],
+        citup_py=lambda w: config["citupm_no_migrations"][w.cohort]["citup_py"],
+        numSolutions=lambda w: config["citupm_no_migrations"][w.cohort]["num_solutions"],
+        dagSolutions=lambda w: config["citupm_no_migrations"][w.cohort]["dag_solutions"],
+    resources:
+        runtime=24 * 60,
+        mem_mb=8 * 1024,
+    log:
+        "results/optimal_trees/{cohort}/{person}/logs/citup.log",
+    threads: 8
+    group:
+        "citupm_no_migations"
+    shell:
+        """
+        echo "Job ID: ${{SLURM_JOB_ID:-NA}}" > {log}
+        mkdir -p {output}
+        outprefix="{output}/{wildcards.person}"
+        python {params.citup_py} \\
+            -f {input.mutations} \\
+            -o $outprefix \\
+            --numSolutions {params.numSolutions} \\
+            {params.args} \\
+            --gurobi-threads {threads} >> {log} 2>&1
+        """
+
+
+rule min_migrations_for_citup_optima_stage23:
+    output:
+        directory("results/min_trees/{cohort}/{person}/trees"),
+    input:
+        mutations="data/{cohort}/{person}/mutations.tsv",
+        sites="data/{cohort}/{person}/sites.tsv",
+        trees="results/optimal_trees/{cohort}/{person}/trees",
+    params:
+        args=lambda w: config["citupm_min_migrations"][w.cohort]["args"],
+        citup_py=lambda w: config["citupm_min_migrations"][w.cohort]["citup_py"],
+        numSolutions=lambda w: config["citupm_min_migrations"][w.cohort][
+            "num_solutions"
+        ],
+        dagSolutions=lambda w: config["citupm_min_migrations"][w.cohort][
+            "dag_solutions"
+        ],
+        metastatic_sites=lambda w: metastatic_sites_option(w.person),
+        tree_scores=lambda w: expand(
+            "results/optimal_trees/{cohort}/{person}/trees/{person}.tree_0.txt",
+            cohort=w.cohort,
+            person=w.person,
+        ),
+        fit_time_limit=24 * 3600,
+    resources:
+        runtime=24 * 60 + 30,
+        mem_mb=8 * 1024,
+    log:
+        "results/min_trees/{cohort}/{person}/logs/citup.log",
+    threads: 8
+    shell:
+        """
+        echo "Job ID: ${{SLURM_JOB_ID:-NA}}" > {log}
+        outdir={output[0]}
+        mkdir -p $outdir
+        outprefix="$outdir/{wildcards.person}"
+        tree_score=$(python scripts/tree_score.py {params.tree_scores})
+        python scripts/extract_fixed_tree.py {params.tree_scores} $outdir >> {log} 2>&1
+
+        python {params.citup_py} \\
+            -f {input.mutations} \\
+            --sites-file {input.sites} \\
+            -o $outprefix \\
+            --fit-time-limit {params.fit_time_limit} \\
+            --warm-start-first-phase-b $outdir/fixed_B.tsv \\
+            --warm-start-first-phase-delta $outdir/fixed_delta.tsv {params.metastatic_sites} \\
+            --minimize-migrations-at-score $tree_score --migration-score-epsilon 0.05 \\
+            --numSolutions {params.numSolutions} \\
+            --max-refined-solutions {params.dagSolutions} \\
+            {params.args} \\
+            --gurobi-threads {threads} >> {log} 2>&1
+        """
+
+
+rule scan_for_target_migrations:
+    output:
+        directory("results/migration_scan/{cohort}/mig_{migrations}/{person}"),
+    input:
+        mutations="data/{cohort}/{person}/mutations.tsv",
+        sites="data/{cohort}/{person}/sites.tsv",
+    params:
+        args=lambda w: config["citupm_scan"][w.cohort]["args"],
+        citup_py=lambda w: config["citupm_scan"][w.cohort]["citup_py"],
+        numSolutions=lambda w: config["citupm_scan"][w.cohort]["num_solutions"],
+        dagSolutions=lambda w: config["citupm_scan"][w.cohort]["dag_solutions"],
+        metastatic_sites=lambda w: metastatic_sites_option(w.person),
+        max_migrations=lambda w: int(w.migrations),
+    resources:
+        runtime=24 * 60,
+        mem_mb=8 * 1024,
+    log:
+        "results/migration_scan/{cohort}/logs/mig_{migrations}/{person}/citup.log",
+    threads: 8
+    shell:
+        """
+        echo "Job ID: ${{SLURM_JOB_ID:-NA}}" > {log}
+        mkdir -p {output}
+        prefix={output}/{wildcards.person}.mig_{wildcards.migrations}
+        python {params.citup_py} \\
+            -f {input.mutations} \\
+            --sites-file {input.sites} \\
+            -o $prefix {params.metastatic_sites} \\
+            --numSolutions {params.numSolutions} \\
+            --max-migrations {params.max_migrations} \\
+            --max-refined-solutions {params.dagSolutions} \\
+            {params.args} \\
+            --gurobi-threads {threads} >> {log} 2>&1
+        """

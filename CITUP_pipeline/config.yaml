@@ -1,0 +1,88 @@
+cohort: "tracerx"
+citupm_no_migrations:
+  tracerx:
+    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    num_solutions: 1
+    dag_solutions: 1
+    args: |-
+      --max-root-out-degree 1 \
+      --clusterWeight equal \
+      --clip-observed-at 1.0 \
+      --presence-threshold 0.025
+  sims:
+    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    num_solutions: 1
+    dag_solutions: 1
+    args: |-
+      --max-root-out-degree 1 \
+      --clusterWeight equal \
+      --clip-observed-at 1.0 \
+      --presence-threshold 0.025
+  cfsims:
+    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    num_solutions: 1
+    dag_solutions: 1
+    args: |-
+      --max-root-out-degree 1 \
+      --clusterWeight equal \
+      --clip-observed-at 1.0 \
+      --presence-threshold 0.025
+
+
+citupm_min_migrations:
+  tracerx:
+    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    num_solutions: 1
+    dag_solutions: 1
+    args: |-
+      --max-root-out-degree 1 \
+      --clusterWeight equal \
+      --clip-observed-at 1.0 \
+      --presence-threshold 0.025
+  sims:
+    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    num_solutions: 1
+    dag_solutions: 1
+    args: |-
+      --max-root-out-degree 1 \
+      --clusterWeight equal \
+      --clip-observed-at 1.0 \
+      --presence-threshold 0.025
+  cfsims:
+    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    num_solutions: 1
+    dag_solutions: 1
+    args: |-
+      --max-root-out-degree 1 \
+      --clusterWeight equal \
+      --clip-observed-at 1.0 \
+      --presence-threshold 0.025
+
+citupm_scan:
+  tracerx:
+    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    num_solutions: 1
+    dag_solutions: 1
+    args: |-
+      --max-root-out-degree 1 \
+      --clusterWeight equal \
+      --clip-observed-at 1.0 \
+      --presence-threshold 0.025
+  sims:
+    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    num_solutions: 1
+    dag_solutions: 1
+    args: |-
+      --max-root-out-degree 1 \
+      --clusterWeight equal \
+      --clip-observed-at 1.0 \
+      --presence-threshold 0.025
+  cfsims:
+    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    num_solutions: 1
+    dag_solutions: 1
+    args: |-
+      --max-root-out-degree 1 \
+      --clusterWeight equal \
+      --clip-observed-at 1.0 \
+      --presence-threshold 0.025
