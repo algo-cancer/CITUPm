@@ -1,9 +1,16 @@
+# Workflow overview: stage 0 fits supplied fixed trees; stage 1 fits trees using
+# the no-migrations configuration; stages 2-3 use stage 1 results to minimize
+# migrations at a reference fit score. Migration scans run separately for the
+# per-person migration limits listed in the samplesheet.
+# The *_all rules collect cohort-wide targets and do not run shell commands.
 import pandas as pd
 
 
 configfile: "config.yaml"
 
 
+# Select the cohort and read its samplesheet. Keep person as both the index
+# (for metadata lookups) and a column (for expanding cohort-wide targets).
 COHORT = config["cohort"]
 SAMPLESHEET = pd.read_csv(
     "samplesheets/" + COHORT + "/samplesheet.tsv",
@@ -14,6 +21,8 @@ SAMPLESHEET = pd.read_csv(
 SAMPLESHEET = SAMPLESHEET.set_index("person", drop=False)
 
 
+# Convert each nonmissing, comma-separated tests entry into one row per
+# person/migration limit. Convert limits to integers for target formatting.
 def full_citupm_scan(samplesheet):
     return (
         samplesheet.dropna(subset=["tests"])
@@ -28,6 +37,10 @@ def full_citupm_scan(samplesheet):
 FULL_citupm_scan = full_citupm_scan(SAMPLESHEET)
 
 
+# Aggregate target: request results/min_trees/<cohort>/<person>/trees for
+# every person. Each directory is produced by
+# min_migrations_for_citup_optima_stage23, which also requires stage 1 results.
+# As the first rule, this is the default target unless explicitly overridden.
 rule stage23_minimal_trees_all:
     input:
         expand(
@@ -37,6 +50,9 @@ rule stage23_minimal_trees_all:
         ),
 
 
+# Aggregate target: request results/fixed_trees/<cohort>/<person>/trees for
+# every person through optimize_fixed_tree_stage0. This branch uses supplied
+# fixed_B.tsv and fixed_delta.tsv files and does not depend on stage 1.
 rule stage0_fixed_trees_all:
     input:
         expand(
@@ -46,6 +62,9 @@ rule stage0_fixed_trees_all:
         ),
 
 
+# Aggregate target: request results/optimal_trees/<cohort>/<person>/trees for
+# every person through optimize_without_migrations_stage1. These results can
+# also serve as inputs to the stages 2-3 migration-minimization rule.
 rule stage1_optimal_trees_all:
     input:
         expand(
@@ -55,6 +74,11 @@ rule stage1_optimal_trees_all:
         ),
 
 
+# Aggregate target: request one scan directory per person/limit pair from
+# FULL_citupm_scan. zip preserves those pairings; it does not form all possible
+# combinations. Migration limits are zero-padded to three digits in paths.
+# Each target is produced by scan_for_target_migrations; people without tests
+# entries contribute no scan targets.
 rule migration_scan_all:
     input:
         expand(
@@ -69,6 +93,8 @@ rule migration_scan_all:
 ##
 # Subordinate targets
 ##
+# Supply --metastatic-sites when the person's metastases field is present;
+# otherwise omit the option. Used by stages 2-3 and the migration-scan rule.
 def metastatic_sites_option(person):
     if not pd.isna(SAMPLESHEET.loc[person, "metastases"]):
         sites = SAMPLESHEET.loc[person, "metastases"]
@@ -77,6 +103,14 @@ def metastatic_sites_option(person):
         return ""
 
 
+# Stage 0: run the configured optimizer for one person with mutations.tsv and
+# supplied fixed_B.tsv/fixed_delta.tsv passed as fixed-tree inputs.
+# Write outputs with a person-specific prefix inside results/fixed_trees.
+# Executable, extra arguments, and solution limits come from the cohort's
+# citupm_no_migrations configuration. Both solution limits are passed through.
+# Request 8 threads and 8192 MB, set runtime to 4 * 60, and group these jobs
+# under citupm_fixed. Record the SLURM job ID (or NA) and optimizer output in
+# the person's logs/citup.log; pass the thread allocation to Gurobi.
 rule optimize_fixed_tree_stage0:
     output:
         directory("results/fixed_trees/{cohort}/{person}/trees"),
@@ -114,6 +148,13 @@ rule optimize_fixed_tree_stage0:
         """
 
 
+# Stage 1: run the cohort's citupm_no_migrations configuration on mutations.tsv
+# without supplying the stage 0 fixed-tree files. Write person-prefixed tree
+# outputs inside results/optimal_trees for later use by stages 2-3.
+# Pass numSolutions and configured extra arguments to the optimizer;
+# dagSolutions is loaded below but is not forwarded by this shell command.
+# Request 8 threads and 8192 MB, set runtime to 24 * 60, and use the declared
+# citupm_no_migations group. Log the job ID and optimizer output per person.
 rule optimize_without_migrations_stage1:
     output:
         directory("results/optimal_trees/{cohort}/{person}/trees"),
@@ -146,6 +187,16 @@ rule optimize_without_migrations_stage1:
         """
 
 
+# Stages 2-3: use mutations.tsv, sites.tsv, and the stage 1 tree directory to
+# minimize migrations at a reference tree score. The trees input establishes
+# the dependency on optimize_without_migrations_stage1 for the same person.
+# Read the score from <person>.tree_0.txt and extract fixed_B.tsv/fixed_delta.tsv
+# into the output directory. Pass these files as first-phase warm starts.
+# Supply the reference score with --minimize-migrations-at-score and set
+# --migration-score-epsilon to 0.05; include metastatic sites when available.
+# Use citupm_min_migrations settings, both solution limits, and a 24 * 3600
+# fit-time limit. Write outputs under results/min_trees and log per person.
+# Request 8 threads and 8192 MB; runtime is set to 24 * 60 + 30.
 rule min_migrations_for_citup_optima_stage23:
     output:
         directory("results/min_trees/{cohort}/{person}/trees"),
@@ -199,6 +250,14 @@ rule min_migrations_for_citup_optima_stage23:
         """
 
 
+# Migration scan: run one independent optimization for a person and migration
+# limit using mutations.tsv and sites.tsv; no earlier tree output is required.
+# Convert the migrations wildcard to an integer and pass it to --max-migrations
+# as an upper bound, not a requirement for an exact migration count.
+# Use citupm_scan settings, both solution limits, and optional metastatic sites.
+# Write person/migration-prefixed outputs inside results/migration_scan under
+# the requested mig_<migrations>/<person> directory, with a separate job log.
+# Request 8 threads and 8192 MB; runtime is set to 24 * 60.
 rule scan_for_target_migrations:
     output:
         directory("results/migration_scan/{cohort}/mig_{migrations}/{person}"),
