@@ -21,22 +21,6 @@ SAMPLESHEET = pd.read_csv(
 SAMPLESHEET = SAMPLESHEET.set_index("person", drop=False)
 
 
-# Convert each nonmissing, comma-separated tests entry into one row per
-# person/migration limit. Convert limits to integers for target formatting.
-def full_citupm_scan(samplesheet):
-    return (
-        samplesheet.dropna(subset=["tests"])
-        .set_index("person")["tests"]
-        .str.split(",")
-        .explode()
-        .astype(int)
-        .reset_index(name="test")
-    )
-
-
-FULL_citupm_scan = full_citupm_scan(SAMPLESHEET)
-
-
 # Aggregate target: request results/min_trees/<cohort>/<person>/trees for
 # every person. Each directory is produced by
 # min_migrations_for_citup_optima_stage23, which also requires stage 1 results.
@@ -71,22 +55,6 @@ rule stage1_optimal_trees_all:
             "results/optimal_trees/{cohort}/{person}/trees",
             cohort=COHORT,
             person=SAMPLESHEET.person,
-        ),
-
-
-# Aggregate target: request one scan directory per person/limit pair from
-# FULL_citupm_scan. zip preserves those pairings; it does not form all possible
-# combinations. Migration limits are zero-padded to three digits in paths.
-# Each target is produced by scan_for_target_migrations; people without tests
-# entries contribute no scan targets.
-rule migration_scan_all:
-    input:
-        expand(
-            "results/migration_scan/{cohort}/mig_{migrations:03d}/{person}",
-            zip,
-            cohort=[COHORT] * FULL_citupm_scan.shape[0],
-            person=FULL_citupm_scan.person,
-            migrations=FULL_citupm_scan.test,
         ),
 
 
@@ -244,50 +212,6 @@ rule min_migrations_for_citup_optima_stage23:
             --warm-start-first-phase-delta $outdir/fixed_delta.tsv {params.metastatic_sites} \\
             --minimize-migrations-at-score $tree_score --migration-score-epsilon 0.05 \\
             --numSolutions {params.numSolutions} \\
-            --max-refined-solutions {params.dagSolutions} \\
-            {params.args} \\
-            --gurobi-threads {threads} >> {log} 2>&1
-        """
-
-
-# Migration scan: run one independent optimization for a person and migration
-# limit using mutations.tsv and sites.tsv; no earlier tree output is required.
-# Convert the migrations wildcard to an integer and pass it to --max-migrations
-# as an upper bound, not a requirement for an exact migration count.
-# Use citupm_scan settings, both solution limits, and optional metastatic sites.
-# Write person/migration-prefixed outputs inside results/migration_scan under
-# the requested mig_<migrations>/<person> directory, with a separate job log.
-# Request 8 threads and 8192 MB; runtime is set to 24 * 60.
-rule scan_for_target_migrations:
-    output:
-        directory("results/migration_scan/{cohort}/mig_{migrations}/{person}"),
-    input:
-        mutations="data/{cohort}/{person}/mutations.tsv",
-        sites="data/{cohort}/{person}/sites.tsv",
-    params:
-        args=lambda w: config["citupm_scan"][w.cohort]["args"],
-        citup_py=lambda w: config["citupm_scan"][w.cohort]["citup_py"],
-        numSolutions=lambda w: config["citupm_scan"][w.cohort]["num_solutions"],
-        dagSolutions=lambda w: config["citupm_scan"][w.cohort]["dag_solutions"],
-        metastatic_sites=lambda w: metastatic_sites_option(w.person),
-        max_migrations=lambda w: int(w.migrations),
-    resources:
-        runtime=24 * 60,
-        mem_mb=8 * 1024,
-    log:
-        "results/migration_scan/{cohort}/logs/mig_{migrations}/{person}/citup.log",
-    threads: 8
-    shell:
-        """
-        echo "Job ID: ${{SLURM_JOB_ID:-NA}}" > {log}
-        mkdir -p {output}
-        prefix={output}/{wildcards.person}.mig_{wildcards.migrations}
-        python {params.citup_py} \\
-            -f {input.mutations} \\
-            --sites-file {input.sites} \\
-            -o $prefix {params.metastatic_sites} \\
-            --numSolutions {params.numSolutions} \\
-            --max-migrations {params.max_migrations} \\
             --max-refined-solutions {params.dagSolutions} \\
             {params.args} \\
             --gurobi-threads {threads} >> {log} 2>&1
