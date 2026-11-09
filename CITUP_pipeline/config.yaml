@@ -1,4 +1,4 @@
-cohort: "tracerx"
+cohort: "sims"
 citupm_no_migrations:
   tracerx:
     citup_py: "../citupm.py"

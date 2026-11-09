@@ -29,7 +29,7 @@ CITUPm optimizer with its Gurobi dependency.
 
 Snakemake uses aggregate targets to specify what analyses should be performed.
 The aggregate targets run the corresponding analysis across the cohort, which is
-by default 125 cases from TRACERx.
+by default 60 simulations from https://github.com/raphael-group/machina.
 
 | Target                      | Purpose                                                                           |
 | --------------------------- | --------------------------------------------------------------------------------- |
@@ -92,10 +92,10 @@ Each applicable cohort entry must define:
 ### Running the workflow
 
 As discussed above, running the workflow is most practical on a cluster.  For
-instance, there are 125 TRACERx cases for the default cohort and these would
-take a considerable amount of time to run sequentially.  Nevertheless, we cannot
-know the exact commmand that you would need to use on your cluster, so we give
-the correct command lines to run sequentially.
+instance, there are 60 simulations in the default cohort and these would take a
+considerable amount of time to run sequentially.  Nevertheless, we cannot know
+the exact commmand that you would need to use on your cluster, so we give the
+correct command lines to run sequentially.
 
 Preview the default workflow and its shell commands:
 
