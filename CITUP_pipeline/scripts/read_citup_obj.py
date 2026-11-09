@@ -1,15 +1,22 @@
-import sys
-import re
+import argparse
 import hashlib
+from pathlib import Path
 
-cruk = re.compile(r"CRUKP?\d+(?:_Tumour\d)?")
 
-for filename in sys.argv[1:]:
-    m = cruk.search(filename)
-    if not m:
-        print("Cannot read", filename)
-        sys.exit(0)
-    person = m.group()
+parser = argparse.ArgumentParser(
+    usage="%(prog)s DIRECTORY",  # Edit this usage line as needed.
+    description="Extract scores and tree digests from *.tree_0.txt files.",
+)
+parser.add_argument(
+    "directory",
+    type=Path,
+    help="Directory to search recursively.",
+)
+args = parser.parse_args()
+
+
+for filename in args.directory.rglob("*.tree_0.txt"):
+    person = filename.name[:-len(".tree_0.txt")]
 
     score = "NA"
     migrations = "NA"
@@ -19,7 +26,8 @@ for filename in sys.argv[1:]:
     reading_migrations = False
     reading_comigrations = False
     reading_tree = False
-    with open(filename) as fh:
+
+    with filename.open() as fh:
         for line in fh:
             if reading_score:
                 score = line.rstrip()
@@ -32,7 +40,7 @@ for filename in sys.argv[1:]:
                 reading_comigrations = False
             elif reading_tree:
                 stripped_line = line.rstrip()
-                if stripped_line == '':
+                if stripped_line == "":
                     reading_tree = False
                     continue
                 tree.append(stripped_line)
@@ -42,12 +50,15 @@ for filename in sys.argv[1:]:
                 reading_migrations = True
             elif line.startswith("MIKE_COMIGRATION_SCORE"):
                 reading_comigrations = True
-            elif line.startswith('PARENT_NODE'):
+            elif line.startswith("PARENT_NODE"):
                 reading_tree = True
             else:
                 reading_score = False
                 reading_migrations = False
                 reading_tree = False
-    tree_digest = hashlib.md5('\n'.join(tree).encode("utf-8")).hexdigest()
+
+    tree_digest = hashlib.md5(
+        "\n".join(tree).encode("utf-8")
+    ).hexdigest()
 
     print(person, migrations, comigrations, score, tree_digest, sep="\t")

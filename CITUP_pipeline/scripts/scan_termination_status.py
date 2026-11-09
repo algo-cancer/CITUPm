@@ -1,12 +1,27 @@
-import pandas as pd
-import sys
-import subprocess
+import argparse
 import re
+import subprocess
+import sys
 from pathlib import Path
+
+import pandas as pd
+
+
+parser = argparse.ArgumentParser(
+    usage="%(prog)s SCAN_NAME",  # Edit this usage line as needed.
+    description="Summarize migration scan logs and Slurm job status as TSV on stdout.",
+)
+parser.add_argument(
+    "scan_name",
+    help="Scan name under results/migration_scan/<SCAN_NAME>/logs.",
+)
+args = parser.parse_args()
 
 infeasible_regex = re.compile("odel is infeasible")
 
-scandir = Path(f"results/migration_scan/{sys.argv[1]}/logs")
+scandir = Path(f"results/migration_scan/{args.scan_name}/logs")
+if not scandir.is_dir():
+    parser.error(f"Log directory does not exist: {scandir}")
 
 status = []
 for filename in scandir.rglob("citup.log"):
@@ -50,11 +65,14 @@ for line in result.stdout.splitlines():
         jobid, state, runtime = line.split("|", 2)
         records.append((jobid, state, runtime))
 
-term_status = pd.DataFrame(records, columns=["jobid",
-    "status","runtime"])
+term_status = pd.DataFrame(records, columns=["jobid", "status", "runtime"])
 status = status.merge(term_status, how="left", on="jobid")
+
 # Must have failed to be declared infeasible
-status.loc[status.infeasible & (status.status == 'FAILED'), 'status'] = "Infeasible"
-status[["person", "migrations", "jobid", "status","runtime"]].to_csv(
+status.loc[
+    status.infeasible & (status.status == "FAILED"), "status"
+] = "Infeasible"
+
+status[["person", "migrations", "jobid", "status", "runtime"]].to_csv(
     sys.stdout, sep="\t", index=False
 )

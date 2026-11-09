@@ -1,12 +1,29 @@
-import pandas as pd
-import sys
-import subprocess
+import argparse
 import re
+import subprocess
+import sys
 from pathlib import Path
+
+import pandas as pd
+
+
+parser = argparse.ArgumentParser(
+    usage="%(prog)s SCAN_DIR",  # Edit this usage line as needed.
+    description="Summarize citup logs and Slurm job status as TSV on stdout.",
+)
+parser.add_argument(
+    "scan_dir",
+    type=Path,
+    help="Directory to search recursively for citup.log files.",
+)
+args = parser.parse_args()
+
+if not args.scan_dir.is_dir():
+    parser.error("SCAN_DIR must be an existing directory.")
 
 infeasible_regex = re.compile("odel is infeasible")
 
-scandir = Path(sys.argv[1])
+scandir = args.scan_dir
 
 status = []
 for filename in scandir.rglob("citup.log"):
@@ -49,11 +66,14 @@ for line in result.stdout.splitlines():
         jobid, state, runtime = line.split("|", 2)
         records.append((jobid, state, runtime))
 
-term_status = pd.DataFrame(records, columns=["jobid", "status",
-    "runtime"])
+term_status = pd.DataFrame(records, columns=["jobid", "status", "runtime"])
 status = status.merge(term_status, how="left", on="jobid")
+
 # Must have failed to be declared infeasible
-status.loc[status.infeasible & (status.status == 'FAILED'), 'status'] = "Infeasible"
-status[["person", "jobid", "status","runtime"]].to_csv(
+status.loc[
+    status.infeasible & (status.status == "FAILED"), "status"
+] = "Infeasible"
+
+status[["person", "jobid", "status", "runtime"]].to_csv(
     sys.stdout, sep="\t", index=False
 )
