@@ -1,7 +1,7 @@
 cohort: "tracerx"
 citupm_no_migrations:
   tracerx:
-    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    citup_py: "../citupm.py"
     num_solutions: 1
     dag_solutions: 1
     args: |-
@@ -10,7 +10,7 @@ citupm_no_migrations:
       --clip-observed-at 1.0 \
       --presence-threshold 0.025
   sims:
-    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    citup_py: "../citupm.py"
     num_solutions: 1
     dag_solutions: 1
     args: |-
@@ -19,7 +19,7 @@ citupm_no_migrations:
       --clip-observed-at 1.0 \
       --presence-threshold 0.025
   cfsims:
-    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    citup_py: "../citupm.py"
     num_solutions: 1
     dag_solutions: 1
     args: |-
@@ -31,7 +31,7 @@ citupm_no_migrations:
 
 citupm_min_migrations:
   tracerx:
-    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    citup_py: "../citupm.py"
     num_solutions: 1
     dag_solutions: 1
     args: |-
@@ -40,7 +40,7 @@ citupm_min_migrations:
       --clip-observed-at 1.0 \
       --presence-threshold 0.025
   sims:
-    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    citup_py: "../citupm.py"
     num_solutions: 1
     dag_solutions: 1
     args: |-
@@ -49,7 +49,7 @@ citupm_min_migrations:
       --clip-observed-at 1.0 \
       --presence-threshold 0.025
   cfsims:
-    citup_py: "../CITUP/citup_recomb_w_mike_mig12.py"
+    citup_py: "../citupm.py"
     num_solutions: 1
     dag_solutions: 1
     args: |-
