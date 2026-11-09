@@ -108,6 +108,8 @@ python citupm.py -f /path/to/frequencies.tsv -o results/patient/joint/patient \
   --minimize-migrations-at-score "$reference_score" --migration-score-epsilon 0.05 \
   --max-refined-solutions 1 --fit-time-limit 86400 --gurobi-threads 16
 ```
+The [CITUPm pipeline](CITUPm_pipeline/README.md) implement the same procedure but for multiple cases
+in a cohort.
 
 The TRACERx protocol uses equal weights, clipping at 1.0, presence threshold `0.025`, root out-degree `1`, one clonal tree, one refined tree, 16 threads, and a 24-hour fit budget. The simulations use the same approach with a 16-hour fit budget. Supply the primary/metastatic annotations with `--metastatic-sites` when available. To use the paper's warm starts, add the two `--warm-start-first-phase-*` files, as demonstrated in the example script.
 

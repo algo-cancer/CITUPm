@@ -1,4 +1,3 @@
-
 # CITUPm pipeline
 
 This project uses Snakemake to run CITUPm tree optimization and migration
@@ -25,11 +24,11 @@ pipeline.   In general, the workflow requires Snakemake, Python, pandas, and
 CITUPm optimizer with its Gurobi dependency.
 
 
-### Workflow targets
+## Workflow targets
 
 Snakemake uses aggregate targets to specify what analyses should be performed.
 The aggregate targets run the corresponding analysis across the cohort, which is
-by default 60 simulations adapted from https://github.com/raphael-group/machina.
+by default, 60 simulations adapted from https://github.com/raphael-group/machina.
 We parsed the original simulations and adapted them to CITUPm format; the files
 in CITUPm format are in `data/sims`.
 
@@ -56,7 +55,7 @@ Run commands from the project root, with the following files available:
 The Snakefile does not generate these source data files or define their column
 formats. Prepare them in the formats required by CITUPm.
 
-### Samplesheet
+## Samplesheet
 
 The samplesheet is tab-separated and uses the following columns:
 
@@ -65,10 +64,10 @@ The samplesheet is tab-separated and uses the following columns:
 | `person`     | Person identifier matching the corresponding data directory. Use one row per person.|
 | `metastases` | Optional value passed to `--metastatic-sites`. Leave blank to omit this option; otherwise use the optimizer’s expected syntax.|
 
-### Configuration
+## Configuration
 
 Set `cohort` in `config.yaml` to select the cohort to run the pipeline on.  This
-configuration value then determines the samplesheet, the paths to the the input
+configuration value then determines the samplesheet, the paths to the input
 files as described above, and the paths to the output files as described below. 
 
 Optimizer settings are organized under two sections, each keyed by cohort name:
@@ -91,7 +90,7 @@ Each applicable cohort entry must define:
   reseeding.
     
 
-### Running the workflow
+## Running the workflow
 
 As discussed above, running the workflow is most practical on a cluster.  For
 instance, there are 60 simulations in the default cohort and these would take a
@@ -121,7 +120,7 @@ snakemake --cores 8 stage0_fixed_trees_all
 snakemake --cores 8 stage1_optimal_trees_all
 ```
 
-### Outputs and logs
+## Outputs and logs
 
 | Analysis       | Output directory|
 | ---            | ---                                                          |
@@ -135,17 +134,17 @@ person’s `trees` directory.
 Each processing rule records the SLURM job ID, or `NA` when unavailable, and
 redirects optimizer output and errors to its log.
 
-### Reading CITUPm objectives and plotting
+## Reading CITUPm objectives and plotting
 
 To read CITUPm output and produce a table with columns 'case', 'migrations',
 'comigrations' 'DCF fit error', and 'tree hash', use the
 script/read_citup_obj.py script with a directory as its argument.  For example,
 ```
-python python scripts/read_citup_obj.py results/min_trees/sims
+python scripts/read_citup_obj.py results/min_trees/sims
 ```
 will return a table of objective values for the simulations.  The 'tree hash'
 column is a checksum of the tree topology to indicate whether the trees from
-different runs mearly have the same score or are identical.
+different runs merely have the same score or are identical.
 
 To plot trees, use, for example,
 ```
@@ -153,7 +152,7 @@ python scripts/plot_by_tree_path.py results/min_trees/sims
 ```
 
 
-### Computing resources
+## Computing resources
 
 Every processing rule declares 8 threads and `mem_mb=8192`. The thread
 allocation is passed to the optimizer through `--gurobi-threads`.
