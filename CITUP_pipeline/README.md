@@ -1,32 +1,44 @@
 
-## Tree optimization and migration analysis
+# CITUPm pipeline
 
 This project uses Snakemake to run CITUPm tree optimization and migration
 analyses for each person in a selected cohort. The workflow supports fitting
 supplied fixed trees, optimizing trees using the no-migrations configuration,
-minimizing migrations using a stage 1 reference score, and scanning specified
-migration limits.
+and minimizing migrations subject to a DCF fit error tolerance around the
+solution from the no-migrations configuration.  
+
+As a pipeline, it is designed for bulk processing rather than processing an
+individual sample.  It takes as input a samplesheet specifying persons in a
+cohort and a structured set of input files and directories.   It produces a
+structured set of output files and directories within the directory `results/`.
+
+As a Snakemake pipeline, it can be run in many differing compute environments,
+from a single machine to nodes on a cluster.  Typically, Snakemake is involked
+in a Linux or Unix-like environment like MacOS. It is most practical to run this
+pipeline on a cluster. We ran on the heterogenous NIH Biowulf cluster with a
+Slurm scheduler using their Snakemake instructions.  We do not have any specific
+instructions for how to run on your cluster; Snakemake documents the general
+process but we expect that your cluster will have specific instructions.
+
+Installation of CITUPm should include all specific software needed to run this
+pipeline.   In general, the workflow requires Snakemake, Python, pandas, and
+CITUPm optimizer with its Gurobi dependency.
+
 
 ### Workflow targets
 
-The aggregate targets run the corresponding analysis across the cohort.
+Snakemake uses aggregate targets to specify what analyses should be performed.
+The aggregate targets run the corresponding analysis across the cohort, which is
+by default 125 cases from TRACERx.
 
 | Target                      | Purpose                                                                           |
 | --------------------------- | --------------------------------------------------------------------------------- |
 | `stage0_fixed_trees_all`    | Fit mutation data using supplied fixed-tree inputs.                               |
 | `stage1_optimal_trees_all`  | Optimize trees using the cohort’s no-migrations configuration.                    |
 | `stage23_minimal_trees_all` | Minimize migrations using a reference score and warm starts derived from stage 1. |
-| `migration_scan_all`        | Run separate optimizations for the migration limits listed in the samplesheet.    |
 
-**The default target is** `**stage23_minimal_trees_all**`**.** It depends on
-stage 1 results, so Snakemake schedules the required stage 1 jobs automatically.
-Stage 0 and migration scans are independent branches and must be requested
-separately.
-
-### Requirements and input files
-
-The workflow requires Snakemake, Python, pandas, and CITUPm optimizer
-with its Gurobi dependency.
+**The default target is** `**stage23_minimal_trees_all**`**.** Which is the complete 
+CITUPm three stage pipeline (stage 1 is run as a dependancy.)
 
 Run commands from the project root, with the following files available:
 
@@ -37,10 +49,10 @@ Run commands from the project root, with the following files available:
 | `data/{cohort}/{person}/mutations.tsv`   | All processing rules                      |
 | `data/{cohort}/{person}/fixed_B.tsv`.    | Stage 0                                   |
 | `data/{cohort}/{person}/fixed_delta.tsv` | Stage 0                                   |
-| `data/{cohort}/{person}/sites.tsv`       | Stages 2–3 and migration scans            |
+| `data/{cohort}/{person}/sites.tsv`       | Stages 2–3           |
 
 The Snakefile does not generate these source data files or define their column
-formats. Prepare them in the formats required by the configured optimizer.
+formats. Prepare them in the formats required by CITUPm.
 
 ### Samplesheet
 
@@ -49,27 +61,20 @@ The samplesheet is tab-separated and uses the following columns:
 | Column       | Description|
 | ---          | --- |
 | `person`     | Person identifier matching the corresponding data directory. Use one row per person.|
-| `tests`      | Comma-separated integer migration limits, such as `0,1,2,3`. Leave blank to omit that person from the aggregate migration scan.|
 | `metastases` | Optional value passed to `--metastatic-sites`. Leave blank to omit this option; otherwise use the optimizer’s expected syntax.|
-
-Include the column headers even when optional values are blank. The `tests`
-column is parsed when the workflow loads, including when running targets other
-than migration scans. The samplesheet reader treats `#` as a comment marker.
-
-Each nonblank `tests` entry creates one scan job per listed limit. Limits are
-paired with their corresponding person rather than combined across the cohort.
 
 ### Configuration
 
-Set `cohort` in `config.yaml` to select the samplesheet and data directories.
+Set `cohort` in `config.yaml` to select the cohort to run the pipeline on.  This
+configuration value then determines the samplesheet, the paths to the the input
+files as described above, and the paths to the output files as described below. 
 
-Optimizer settings are organized under three sections, each keyed by cohort name:
+Optimizer settings are organized under two sections, each keyed by cohort name:
 
 |Configuration section. | Used by        |
 |---                    | ---            |
 |`citupm_no_migrations` | Stages 0 and 1 |
 |`citupm_min_migrations`| Stages 2–3     |
-|`citupm_scan`          | Migration scans|
 
 Each applicable cohort entry must define:
 
@@ -77,14 +82,20 @@ Each applicable cohort entry must define:
     
 - `args`: additional command-line arguments.
     
-- `num_solutions`: value passed to `--numSolutions`.
+- `num_solutions`: the number of clonal trees T for CITUPm to compute.
     
-- `dag_solutions`: value passed to `--max-refined-solutions` in stage 0, stages 2–3, and migration scans.
+- `dag_solutions`: the number of refined trees to be produced for each clonal
+  tree T.  Set to zero to enumerage all refined trees that do not involve
+  reseeding.
     
-
-Stage 1 reads `dag_solutions` from the configuration but does not pass it to the optimizer.
 
 ### Running the workflow
+
+As discussed above, running the workflow is most practical on a cluster.  For
+instance, there are 125 TRACERx cases for the default cohort and these would
+take a considerable amount of time to run sequentially.  Nevertheless, we cannot
+know the exact commmand that you would need to use on your cluster, so we give
+the correct command lines to run sequentially.
 
 Preview the default workflow and its shell commands:
 
@@ -146,4 +157,4 @@ allocation is passed to the optimizer through `--gurobi-threads`.
 
 These are resource declarations; their enforcement depends on the execution
 backend. For cluster execution, configure an appropriate Snakemake executor or
-profile. Recording a SLURM job ID does not itself submit jobs to SLURM.
+profile.
