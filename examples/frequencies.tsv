@@ -1,0 +1,5 @@
+mutID	primary_1	primary_2	metastasis_1	clusterID
+m1	0.80	0.75	0.70	C1
+m2	0.82	0.77	0.72	C1
+m3	0.40	0.35	0.30	C2
+m4	0.42	0.37	0.32	C2
