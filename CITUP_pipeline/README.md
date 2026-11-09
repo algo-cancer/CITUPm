@@ -13,7 +13,7 @@ cohort and a structured set of input files and directories.   It produces a
 structured set of output files and directories within the directory `results/`.
 
 As a Snakemake pipeline, it can be run in many differing compute environments,
-from a single machine to nodes on a cluster.  Typically, Snakemake is involked
+from a single machine to nodes on a cluster.  Typically, Snakemake is invoked
 in a Linux or Unix-like environment like MacOS. It is most practical to run this
 pipeline on a cluster. We ran on the heterogenous NIH Biowulf cluster with a
 Slurm scheduler using their Snakemake instructions.  We do not have any specific
