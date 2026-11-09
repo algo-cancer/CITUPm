@@ -46,9 +46,9 @@ for filename in args.directory.rglob("*.tree_0.txt"):
                 tree.append(stripped_line)
             elif line.startswith("TREE_SCORE_NO_REWARD"):
                 reading_score = True
-            elif line.startswith("MIKE_MIGRATION_SCORE"):
+            elif line.startswith("NUM_MIGRATIONS"):
                 reading_migrations = True
-            elif line.startswith("MIKE_COMIGRATION_SCORE"):
+            elif line.startswith("NUM_COMIGRATIONS"):
                 reading_comigrations = True
             elif line.startswith("PARENT_NODE"):
                 reading_tree = True
