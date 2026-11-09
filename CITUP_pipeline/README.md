@@ -119,9 +119,6 @@ snakemake --cores 8 stage0_fixed_trees_all
 
 # Run stage 1 only.
 snakemake --cores 8 stage1_optimal_trees_all
-
-# Run the migration limits specified in the samplesheet.
-snakemake --cores 8 migration_scan_all
 ```
 
 ### Outputs and logs
@@ -131,19 +128,30 @@ snakemake --cores 8 migration_scan_all
 | Stage 0        | `results/fixed_trees/{cohort}/{person}/trees/`               |
 | Stage 1        | `results/optimal_trees/{cohort}/{person}/trees/`             |
 | Stages 2–3     | `results/min_trees/{cohort}/{person}/trees/`                 |
-| Migration scan | `results/migration_scan/{cohort}/mig_{migrations}/{person}/` |
-
-The aggregate scan target pads migrations to at least three digits, for example `mig_002`.
 
 For stages 0, 1, and 2–3, logs are stored in `logs/citup.log` alongside each
-person’s `trees` directory. Migration-scan logs are stored at:
-
-```
-results/migration_scan/{cohort}/logs/mig_{migrations}/{person}/citup.log
-```
+person’s `trees` directory.
 
 Each processing rule records the SLURM job ID, or `NA` when unavailable, and
 redirects optimizer output and errors to its log.
+
+### Reading CITUPm objectives and plotting
+
+To read CITUPm output and produce a table with columns 'case', 'migrations',
+'comigrations' 'DCF fit error', and 'tree hash', use the
+script/read_citup_obj.py script with a directory as its argument.  For example,
+```
+python python scripts/read_citup_obj.py results/min_trees/sims
+```
+will return a table of objective values for the simulations.  The 'tree hash'
+column is a checksum of the tree topology to indicate whether the trees from
+different runs mearly have the same score or are identical.
+
+To plot trees, use, for example,
+```
+python scripts/plot_by_tree_path.py results/min_trees/sims
+```
+
 
 ### Computing resources
 
@@ -155,7 +163,6 @@ allocation is passed to the optimizer through `--gurobi-threads`.
 | Stage 0        | 4 hours             |
 | Stage 1        | 24 hours            |
 | Stages 2–3     | 24 hours 30 minutes |
-| Migration scan | 24 hours            |
 
 These are resource declarations; their enforcement depends on the execution
 backend. For cluster execution, configure an appropriate Snakemake executor or
