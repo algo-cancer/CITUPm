@@ -30,6 +30,8 @@ CITUPm optimizer with its Gurobi dependency.
 Snakemake uses aggregate targets to specify what analyses should be performed.
 The aggregate targets run the corresponding analysis across the cohort, which is
 by default 60 simulations adapted from https://github.com/raphael-group/machina.
+We parsed the original simulations and adapted them to CITUPm format; the files
+in CITUPm format are in `data/sims`.
 
 | Target                      | Purpose                                                                           |
 | --------------------------- | --------------------------------------------------------------------------------- |
