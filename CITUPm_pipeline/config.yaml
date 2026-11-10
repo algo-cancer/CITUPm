@@ -42,7 +42,7 @@ citupm_min_migrations:
   sims:
     citup_py: "../citupm.py"
     num_solutions: 1
-    dag_solutions: 1
+    dag_solutions: 0
     args: |-
       --max-root-out-degree 1 \
       --clusterWeight equal \
@@ -51,7 +51,7 @@ citupm_min_migrations:
   cfsims:
     citup_py: "../citupm.py"
     num_solutions: 1
-    dag_solutions: 1
+    dag_solutions: 0
     args: |-
       --max-root-out-degree 1 \
       --clusterWeight equal \
