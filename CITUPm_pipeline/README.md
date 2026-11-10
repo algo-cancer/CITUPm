@@ -8,26 +8,30 @@ solution from the no-migrations configuration.
 
 As a pipeline, it is designed for bulk processing rather than processing an
 individual sample.  It takes as input a samplesheet specifying persons in a
-cohort and a structured set of input files and directories.   It produces a
+cohort and a structured set of input files and directories.  It produces a
 structured set of output files and directories within the directory `results/`.
 
 As a Snakemake pipeline, it can be run in many differing compute environments,
-from a single machine to nodes on a cluster.  Typically, Snakemake is invoked
-in a Linux or Unix-like environment like MacOS. It is most practical to run this
-pipeline on a cluster. We ran on the heterogenous NIH Biowulf cluster with a
-Slurm scheduler using their Snakemake instructions.  We do not have any specific
-instructions for how to run on your cluster; Snakemake documents the general
-process but we expect that your cluster will have specific instructions.
+from a single machine to nodes on a cluster.  Typically, Snakemake is invoked in
+a Linux or Unix-like environment like macOS. It is most practical to run this
+pipeline on a cluster. We ran the pipeline on the heterogenous NIH Biowulf
+cluster with a Slurm scheduler using their Snakemake instructions.  We do not
+have any specific instructions for how to run on your cluster; Snakemake
+documents the general process, but we expect that your cluster will have
+specific instructions.
 
-Installation of CITUPm should include all specific software needed to run this
-pipeline.   In general, the workflow requires Snakemake, Python, pandas, and
-CITUPm optimizer with its Gurobi dependency.
-
+To install this pipeline, install CITUPm as instructed in its README.md.  Then
+obtain Snakemake.  If you are on a cluster, we recommend you use the cluster's
+installation of Snakemake, if it is available. If not, then, within the virtual
+environment you use to run CITUPm, install Snakemake like as follows.
+```
+pip install snakemake
+```
 
 ## Workflow targets
 
 Snakemake uses aggregate targets to specify what analyses should be performed.
-The aggregate targets run the corresponding analysis across the cohort, which is
+The aggregate targets run the corresponding analysis across the cohort, which is,
 by default, 60 simulations adapted from https://github.com/raphael-group/machina.
 We parsed the original simulations and adapted them to CITUPm format; the files
 in CITUPm format are in `data/sims`.
@@ -38,8 +42,8 @@ in CITUPm format are in `data/sims`.
 | `stage1_optimal_trees_all`  | Optimize trees using the cohort’s no-migrations configuration.                    |
 | `stage23_minimal_trees_all` | Minimize migrations using a reference score and warm starts derived from stage 1. |
 
-**The default target is** `**stage23_minimal_trees_all**`**.** Which is the complete 
-CITUPm three stage pipeline (stage 1 is run as a dependancy.)
+The default target is `stage23_minimal_trees_all`, which is the complete 
+CITUPm three-stage pipeline (stage 1 is run as a dependency).
 
 Run commands from the project root, with the following files available:
 
@@ -48,7 +52,7 @@ Run commands from the project root, with the following files available:
 | `config.yaml`                            | Workflow configuration                    |
 | `samplesheets/{cohort}/samplesheet.tsv`  | Cohort membership and per-person settings |
 | `data/{cohort}/{person}/mutations.tsv`   | All processing rules                      |
-| `data/{cohort}/{person}/fixed_B.tsv`.    | Stage 0                                   |
+| `data/{cohort}/{person}/fixed_B.tsv`     | Stage 0                                   |
 | `data/{cohort}/{person}/fixed_delta.tsv` | Stage 0                                   |
 | `data/{cohort}/{person}/sites.tsv`       | Stages 2–3           |
 
@@ -72,10 +76,10 @@ files as described above, and the paths to the output files as described below.
 
 Optimizer settings are organized under two sections, each keyed by cohort name:
 
-|Configuration section. | Used by        |
-|---                    | ---            |
-|`citupm_no_migrations` | Stages 0 and 1 |
-|`citupm_min_migrations`| Stages 2–3     |
+| Configuration section  | Used by        |
+| ---                    | ---            |
+| `citupm_no_migrations` | Stages 0 and 1 |
+| `citupm_min_migrations`| Stages 2–3     |
 
 Each applicable cohort entry must define:
 
@@ -86,16 +90,16 @@ Each applicable cohort entry must define:
 - `num_solutions`: the number of clonal trees T for CITUPm to compute.
     
 - `dag_solutions`: the number of refined trees to be produced for each clonal
-  tree T.  Set to zero to enumerage all refined trees that do not involve
+  tree T. Set to zero to enumerate all refined trees that do not involve
   reseeding.
     
 
 ## Running the workflow
 
 As discussed above, running the workflow is most practical on a cluster.  For
-instance, there are 60 simulations in the default cohort and these would take a
+instance, there are 60 simulations in the default cohort, and these would take a
 considerable amount of time to run sequentially.  Nevertheless, we cannot know
-the exact commmand that you would need to use on your cluster, so we give the
+the exact command that you would need to use on your cluster, so we give the
 correct command lines to run sequentially.
 
 Preview the default workflow and its shell commands:
@@ -137,7 +141,7 @@ redirects optimizer output and errors to its log.
 ## Reading CITUPm objectives and plotting
 
 To read CITUPm output and produce a table with columns 'case', 'migrations',
-'comigrations' 'DCF fit error', and 'tree hash', use the
+'comigrations', 'DCF fit error', and 'tree hash', use the
 script/read_citup_obj.py script with a directory as its argument.  For example,
 ```
 python scripts/read_citup_obj.py results/min_trees/sims
